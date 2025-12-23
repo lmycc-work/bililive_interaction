@@ -91,8 +91,8 @@ const globalConfig = reactive<GlobalConfig>({
   defaultTemplate: '感谢{{uname}}赠送了{{num}}个{{gift_name}}，谢谢支持！',
   windowTitle: '主播的感谢',
   titleBarOpacity: 0,
-  windowBgColor: 'rgba(0, 0, 0, 0)',
-  userInfoColor: 'rgba(255, 255, 255, 0)',
+  windowBgColor: 'rgba(0, 0, 0, 1)',
+  userInfoColor: 'rgba(255, 255, 255, 1)',
   isBuffed:false,
   isUserInfo:true,
 });

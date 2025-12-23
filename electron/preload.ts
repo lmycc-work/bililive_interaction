@@ -76,8 +76,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
-
-  // ========== 新增：精准推送/监听API ==========
   // 主窗口：向指定子窗口推送数据
   sendDataToChild: (targetWindowKey:string, data:any) => ipcRenderer.send('send-data-to-child', targetWindowKey, data),
   // 子窗口：监听自身专属通道的消息（根据windowKey）
@@ -93,11 +91,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeListener(channel, (_, data) => callback(data))
   },
 
-
-
   offLiveData: () => {
     ipcRenderer.removeAllListeners('live-data')
-  }
+  },
+  // 新增：配置读写方法（与主进程IPC名称完全一致）
+  getModuleConfig: (moduleKey: string) => ipcRenderer.invoke('config:getModule', moduleKey),
+  saveModuleConfig: (moduleKey: string, moduleConfig: any) => ipcRenderer.invoke('config:saveModule', moduleKey, moduleConfig),
+  getConfigItem: (itemKey: string) => ipcRenderer.invoke('config:getItem', itemKey),
+  setConfigItem: (itemKey: string, value: any) => ipcRenderer.invoke('config:setItem', itemKey, value)
 })
 
 // TS类型声明
@@ -115,6 +116,15 @@ declare global {
       connectLiveServer: (callback: (data: any) => void) => void;
       onExclusiveChildData: (windowKey:string, callback:any) => void;
       sendDataToChild: (targetWindowKey: string, data: any) => void;
+
+      // 读取指定模块配置
+      getModuleConfig: (moduleKey: string) => Promise<any>;
+      // 保存指定模块配置
+      saveModuleConfig: (moduleKey: string, moduleConfig: any) => Promise<void>;
+      // 读取单个配置项
+      getConfigItem: (itemKey: string) => Promise<any>;
+      // 修改单个配置项
+      setConfigItem: (itemKey: string, value: any) => Promise<void>;
     }
   }
 }

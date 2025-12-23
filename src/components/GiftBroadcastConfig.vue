@@ -328,7 +328,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted,toRaw } from "vue";
 import { ElMessage, ElMessageBox, FormInstance } from "element-plus";
 
 // 全局配置表单Ref
@@ -457,36 +457,36 @@ const reselectExclusiveGiftMedia = (row: any) => {
 };
 
 // 添加专属礼物配置（仅添加需要定制的礼物）
-const addExclusiveGiftConfig = () => {
-  const giftName = newExclusiveGiftForm.giftName.trim();
-  const template = newExclusiveGiftForm.exclusiveTemplate.trim();
-
-  if (!giftName) {
-    ElMessage.warning('请输入礼物名称（需与实际礼物名称一致）！');
+const addExclusiveGiftConfig = async () => {
+  if (!newExclusiveGiftForm.giftName || !newExclusiveGiftForm.mediaPath) {
+    ElMessage.error('请完善礼物名称和专属媒体');
     return;
   }
-  if (!template) {
-    ElMessage.warning('请输入该礼物的专属播报模板！');
-    return;
+  try {
+    // 直接生成普通对象（非 reactive 代理），避免响应式包装
+    const pureGiftConfig = {
+      giftName: newExclusiveGiftForm.giftName.trim(),
+      mediaType: newExclusiveGiftForm.mediaType,
+      mediaPath: newExclusiveGiftForm.mediaPath,
+      exclusiveTemplate: newExclusiveGiftForm.exclusiveTemplate
+    };
+
+    const giftKey = pureGiftConfig.giftName;
+    exclusiveGiftConfig[giftKey] = pureGiftConfig; // 即使存入 reactive，后续保存会用 toRaw 剥离
+
+    await saveGlobalConfig();
+
+    // 重置表单（重置为纯数据）
+    newExclusiveGiftForm.giftName = '';
+    newExclusiveGiftForm.mediaType = 'gif';
+    newExclusiveGiftForm.mediaPath = '';
+    newExclusiveGiftForm.exclusiveTemplate = '';
+
+    ElMessage.success('专属礼物添加成功');
+  } catch (e) {
+    ElMessage.error('添加专属礼物失败');
+    console.error('新增礼物错误:', e);
   }
-  if (exclusiveGiftConfig[giftName]) {
-    ElMessage.warning(`【${giftName}】已存在专属配置，请勿重复添加！`);
-    return;
-  }
-
-  // 添加专属配置
-  exclusiveGiftConfig[giftName] = {
-    mediaType: newExclusiveGiftForm.mediaType,
-    mediaPath: newExclusiveGiftForm.mediaPath,
-    exclusiveTemplate: template
-  };
-
-  // 清空新增表单
-  newExclusiveGiftForm.giftName = '';
-  newExclusiveGiftForm.mediaPath = '';
-  newExclusiveGiftForm.exclusiveTemplate = '';
-
-  ElMessage.success(`【${giftName}】专属配置添加成功！`);
 };
 
 // 删除专属礼物配置
@@ -543,7 +543,10 @@ const resetGlobalConfig = () => {
     globalConfigForm.defaultTemplate = '感谢{{uname}}赠送了{{num}}个{{gift_name}}，谢谢支持！';
     globalConfigForm.windowTitle = '主播的感谢';
     globalConfigForm.titleBarOpacity = 1;
+    globalConfigForm.isBuffed = false;
+    globalConfigForm.isUserInfo = true;
     globalConfigForm.windowBgColor = 'rgba(0, 0, 0, 1)';
+    globalConfigForm.userInfoColor = 'rgba(0, 0, 0, 1)';
 
     // 清空全局表单校验状态
     globalConfigFormRef.value?.clearValidate();
@@ -554,34 +557,42 @@ const resetGlobalConfig = () => {
 
 // 保存全局配置（同步保存专属礼物配置）
 const saveGlobalConfig = () => {
-  globalConfigFormRef.value?.validate((valid) => {
+  globalConfigFormRef.value?.validate(async (valid) => {
     if (valid) {
-      // 合并全局配置和专属礼物配置
-      const totalConfig = {
-        global: { ...globalConfigForm },
-        exclusiveGift: { ...exclusiveGiftConfig }
-      };
+      try {
+        // 步骤1：获取 reactive 原始对象（剥离Vue响应式包装）
+        const rawGlobal = toRaw(globalConfigForm);
+        const rawExclusive = toRaw(exclusiveGiftConfig);
 
-      // 保存到localStorage
-      localStorage.setItem('giftBroadcastTotalConfig', JSON.stringify(totalConfig));
+        // 步骤2：深度转换为纯JSON字符串，再解析为普通对象（彻底过滤所有隐性属性）
+        const pureGlobal = JSON.parse(JSON.stringify(rawGlobal));
+        const pureExclusive = JSON.parse(JSON.stringify(rawExclusive));
 
-      ElMessage.success('全局配置+专属礼物配置保存成功，下次打开自动生效！');
+        // 步骤3：组装纯数据配置对象（无任何包装属性）
+        const pureTotalConfig = {
+          global: pureGlobal,
+          exclusiveGift: pureExclusive
+        };
+
+        await window.electronAPI.saveModuleConfig('giftBroadcast', pureTotalConfig);
+        ElMessage.success('配置保存成功！');
+      } catch (e) {
+        ElMessage.error('配置保存失败！');
+        console.error('配置保存错误：', e);
+      }
     } else {
-      ElMessage.error('请完善全局配置必填项后再保存！');
+      ElMessage.error('请完善必填项！');
     }
   });
 };
 
 // 页面初始化：加载本地保存的配置
-onMounted(() => {
-  const savedConfig = localStorage.getItem('giftBroadcastTotalConfig');
+onMounted(async () => {
+  const savedConfig = await window.electronAPI.getModuleConfig('giftBroadcast');
   if (savedConfig) {
     try {
-      const parsedConfig = JSON.parse(savedConfig);
-      // 加载全局配置
-      Object.assign(globalConfigForm, parsedConfig.global);
-      // 加载专属礼物配置
-      Object.assign(exclusiveGiftConfig, parsedConfig.exclusiveGift);
+      Object.assign(globalConfigForm, savedConfig.global);
+      Object.assign(exclusiveGiftConfig, savedConfig.exclusiveGift);
       ElMessage.success('配置加载成功！');
     } catch (e) {
       ElMessage.error('配置解析失败，将使用默认配置！');

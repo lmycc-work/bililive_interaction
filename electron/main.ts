@@ -1,7 +1,58 @@
-
 import { app, BrowserWindow, ipcMain, session } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
+// 1. 导入electron-store
+import Store from 'electron-store';
+const store = new Store({
+  name: 'app-total-config', // 配置文件名（最终生成 app-total-config.json）
+  defaults: {
+    // 礼物播报模块默认配置（与你的业务一致）
+    giftBroadcast: {
+      global: {
+        mediaType: 'gif',
+        mediaPath: '',
+        volume: 1,
+        rate: 1,
+        pitch: 1,
+        delay: 1500,
+        defaultTemplate: '感谢{{uname}}赠送了{{num}}个{{gift_name}}',
+        windowTitle: '主播的感谢',
+        titleBarOpacity: 1,
+        windowBgColor: 'rgba(0, 0, 0, 1)',
+        userInfoColor: 'rgba(255, 255, 255, 1)',
+        isBuffed: false,
+        isUserInfo: true,
+      },
+      exclusiveGift: {} as Record<string, { mediaType: 'gif'|'mp4', mediaPath: string, exclusiveTemplate: string }>
+    }
+  }
+});
+const configAPI = {
+  getModuleConfig: (moduleKey: string) => store.get(moduleKey),
+  saveModuleConfig: (moduleKey: string, moduleConfig: any) => store.set(moduleKey, moduleConfig),
+  getConfigItem: (itemKey: string) => store.get(itemKey),
+  setConfigItem: (itemKey: string, value: any) => store.set(itemKey, value)
+};
+
+ipcMain.handle('config:getModule', (_, moduleKey) => {
+  return configAPI.getModuleConfig(moduleKey);
+});
+
+ipcMain.handle('config:saveModule', (_, moduleKey, moduleConfig) => {
+  configAPI.saveModuleConfig(moduleKey, moduleConfig);
+});
+
+ipcMain.handle('config:getItem', (_, itemKey) => {
+  return configAPI.getConfigItem(itemKey);
+});
+
+ipcMain.handle('config:setItem', (_, itemKey, value) => {
+  configAPI.setConfigItem(itemKey, value);
+});
+
+
+
+
 
 // 解决TS中__dirname的问题
 const __filename = fileURLToPath(import.meta.url)
