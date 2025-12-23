@@ -32,7 +32,6 @@
                 style="height: 60vh; width: 60vw; object-fit: contain;"
                 autoplay
                 loop
-                muted
                 :src="getMediaUrl(currentMedia.path)"
                 alt="礼物视频"
             ></video>
