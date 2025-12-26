@@ -7,15 +7,15 @@
     <div v-if="isConnecting == true">
     <div class="window-group">
       <h3>上舰动画页面</h3>
-      <button class="btn open-btn" disabled @click="openChildWindow('window1')">打开</button>
-      <button class="btn close-btn" disabled @click="closeChildWindow('window1')">关闭</button>
+      <button class="btn open-btn"  @click="openChildWindow('window1')">打开</button>
+      <button class="btn close-btn"  @click="closeChildWindow('window1')">关闭</button>
     </div>
 
     <!-- 子窗口2控制按钮 -->
     <div class="window-group">
       <h3>礼物统计页面</h3>
-      <button class="btn open-btn" disabled @click="openChildWindow('window2')">打开</button>
-      <button class="btn close-btn" disabled  @click="closeChildWindow('window2')">关闭</button>
+      <button class="btn open-btn"  @click="openChildWindow('window2')">打开</button>
+      <button class="btn close-btn"   @click="closeChildWindow('window2')">关闭</button>
     </div>
 
     <!-- 子窗口3控制按钮 -->
@@ -43,21 +43,21 @@
     </div>
 
     <el-drawer v-model="drawer" :show-close="true" size="100%" :direction="direction" resizable>
-      <el-tabs type="border-card" class="tabs">
-        <el-tab-pane label="上舰动画设置">
-          <ShipLoadConfig></ShipLoadConfig>
+      <el-tabs type="border-card" class="tabs" lazy v-model="activeTabName">
+        <el-tab-pane label="上舰动画设置" name="shipLoad">
+          <ShipLoadConfig v-if="activeTabName === 'shipLoad'"></ShipLoadConfig>
         </el-tab-pane>
-        <el-tab-pane label="礼物统计设置">
-          <GiftStatisticsConfig></GiftStatisticsConfig>
+        <el-tab-pane label="礼物统计设置" name="giftStatistics">
+          <GiftStatisticsConfig v-if="activeTabName === 'giftStatistics'"></GiftStatisticsConfig>
         </el-tab-pane>
-        <el-tab-pane label="特殊弹幕设置">
-          <SpecialDanmKuConfig></SpecialDanmKuConfig>
+        <el-tab-pane label="特殊弹幕设置" name="specialDanmaku">
+          <SpecialDanmKuConfig v-if="activeTabName === 'specialDanmaku'"></SpecialDanmKuConfig>
         </el-tab-pane>
-        <el-tab-pane label="礼物抽奖设置">
-          <GiftLotteryConfig></GiftLotteryConfig>
+        <el-tab-pane label="礼物抽奖设置" name="giftLottery">
+          <GiftLotteryConfig v-if="activeTabName === 'giftLottery'"></GiftLotteryConfig>
         </el-tab-pane>
-        <el-tab-pane label="礼物播报设置">
-          <GiftBroadcastConfig> </GiftBroadcastConfig>
+        <el-tab-pane label="礼物播报设置" name="giftBroadcast">
+          <GiftBroadcastConfig v-if="activeTabName === 'giftBroadcast'"> </GiftBroadcastConfig>
         </el-tab-pane>
       </el-tabs>
 
@@ -74,7 +74,7 @@ import GiftLotteryConfig from "../components/GiftLotteryConfig.vue";
 import GiftStatisticsConfig from "../components/GiftStatisticsConfig.vue";
 import ShipLoadConfig from "../components/ShipLoadConfig.vue";
 import SpecialDanmKuConfig from "../components/SpecialDanmKuConfig.vue";
-
+const activeTabName = ref('shipLoad');
 let isConnecting = ref(false)
 const drawer = ref(false)
 const direction = ref('btt')

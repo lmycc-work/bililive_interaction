@@ -34,7 +34,8 @@
                 loop
                 :src="getMediaUrl(currentMedia.path)"
                 alt="礼物视频"
-            ></video>
+            >
+            </video>
           </template>
           <!-- 送礼人信息 -->
           <span v-if="globalConfig.isUserInfo" class="unserinfo" :style="{color:globalConfig.userInfoColor}">
@@ -54,6 +55,7 @@
 
 <script setup lang="ts">
 import {onMounted, onUnmounted, reactive, ref} from "vue";
+import {ElMessage} from "element-plus";
 
 const windowKey = 'window5'
 
@@ -275,34 +277,24 @@ const initSpeechSynthesis = () => {
 };
 
 // 8. 监听localStorage变化，同步配置（主页面修改配置后实时更新）
-const listenLocalStorageChange = () => {
+const listenLocalStorageChange = async () => {
   // 初始加载配置
-  const loadConfig = () => {
-    const savedConfig = localStorage.getItem('giftBroadcastTotalConfig');
+  const loadConfig = async () => {
+    const savedConfig = await window.electronAPI.getModuleConfig('giftBroadcast');
     if (savedConfig) {
       try {
-        const parsedConfig = JSON.parse(savedConfig);
-        console.log(parsedConfig)
-        // 同步全局配置
-        Object.assign(globalConfig, parsedConfig.global);
-        // 同步专属礼物配置
-        Object.assign(exclusiveGiftConfig, parsedConfig.exclusiveGift);
-        console.log('Window5配置加载/更新成功', globalConfig, exclusiveGiftConfig);
+        Object.assign(globalConfig, savedConfig.global);
+        Object.assign(exclusiveGiftConfig, savedConfig.exclusiveGift);
+        ElMessage.success('配置加载成功！');
       } catch (e) {
-        console.error('Window5配置解析失败', e);
+        ElMessage.error('配置解析失败，将使用默认配置！');
+        console.error('配置解析错误：', e);
       }
     }
   };
 
   // 页面初始化时加载一次
   loadConfig();
-
-  // 监听localStorage变化，实时同步
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'giftBroadcastTotalConfig') {
-      loadConfig();
-    }
-  });
 };
 
 const handleDragStart = (e: MouseEvent) => {

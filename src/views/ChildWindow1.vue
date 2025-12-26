@@ -1,19 +1,23 @@
 <!-- ChildWindow1.vue -->
 <template>
-  <div class="child-window" >
+  <div :class="{'child-window':true,'showBox':isShowBox}">
     <!-- 自定义标题栏（拖动区） -->
     <div
         class="drag-area"
+        :style="{opacity: globalConfig.titleBarOpacity}"
         @mousedown="handleDragStart"
         @mouseup="handleDragEnd"
         @mouseleave="handleDragEnd"
     >
-      <span class="title">猩🐒的舰队
+      <span class="title" :style="{ color: globalConfig.windowBgColor }">猩🐒的舰队
         <span style="cursor:pointer;" @click="isMuted = !isMuted">
           <span v-if="isMuted">🔕</span>
           <span v-else>🎵</span>
         </span>
-        <span style="cursor:pointer;" @click="addQueue({id:'Ycc_Work',type:'舰长*1'})">🚀🚀🚀</span>
+        <span style="cursor:pointer;" @click="isShowBox = !isShowBox">
+          <img style="height: 8%;width: 8%" v-if="isShowBox" src="/static/显示.png" />
+          <img style="height: 8%;width: 8%" v-else src="/static/隐藏.png" />
+        </span>
       </span>
     </div>
     <!-- 内容区 -->
@@ -28,17 +32,16 @@
           @ended="handleVideoEnd"
       >
       </video>
-      <div class="typeContent" v-show="isPlaying">
-        <span style="font-size: 2.5rem;font-weight: bolder;color: black;">{{ typingMsg }}</span>
+      <div v-if="globalConfig.isUserInfo" class="typeContent" v-show="isPlaying">
+        <span class="userInfo" :style="{color:globalConfig.userInfoColor}">{{ typingMsg }}</span>
         <span style="display: flex;flex-direction: row;justify-content: space-between;flex:1;margin-top: 10%">
           <img v-show="rulieIndex>=1" style="width: 50%;height: 50%" src="/static/入.png" />
           <img v-show="rulieIndex>=2" style="width: 50%;height: 50%" src="/static/列.png" />
         </span>
       </div>
-      <div class="shipList" >
+      <div  v-if="globalConfig.isUserInfo" class="shipList" >
         <div v-for="(item,index) in shipList" :key="index">
-          <span style="font-weight: bolder;font-size: 1.5rem">{{item.id}}</span>
-          购买了<span style="font-size: 1.5rem">{{item.type}}</span>
+          <span class="userInfo_list" :style="{color:globalConfig.userInfoColor}">{{item.id}}加入舰队</span>
         </div>
       </div>
     </div>
@@ -46,9 +49,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import {ref, onMounted, onUnmounted, reactive} from 'vue'
+import {ElMessage} from "element-plus";
 const windowKey = 'window1'
 let isDragging = ref(false) // 是否正在拖动
+let isShowBox = ref(false)
 
 
 let isMuted = ref(true)
@@ -65,18 +70,41 @@ const isPlaying = ref(false)
 const typingId = ref('')
 const typingMsg = ref('')
 let rulieIndex = ref(0)
-const videoPool = ref<string[]>([
-  '/static/ship_chun.mp4', // 素材1
-  '/static/ship_jing.mp4', // 素材2
-  '/static/ship2.mp4'  // 素材3
-])
+
+let removeExclusiveListener: void | (() => void) | null = null;
+const globalConfig = reactive<GlobalConfig>({
+  isMuted: false,
+  windowTitle: '主播的舰长',
+  titleBarOpacity: 1,
+  isUserInfo: true,
+  windowBgColor: 'rgba(0, 0, 0, 1)',
+  userInfoColor: 'rgba(0, 0, 0, 1)',
+  delay:200
+});
+const media = reactive<string[]>([]);
+
+
 const typeSpeed = 100 // 打字速度（ms/字符）
 const blessSpeed = 1000
 // ========== 工具函数：随机获取一个视频素材（核心） ==========
 const getRandomVideo = () => {
-  const randomIndex = Math.floor(Math.random() * videoPool.value.length)
-  return videoPool.value[randomIndex]
+  const randomIndex = Math.floor(Math.random() * media.length)
+  console.log(getMediaUrl(media[randomIndex]));
+  return getMediaUrl(media[randomIndex])
 }
+
+const getMediaUrl = (path: string) => {
+  // 项目内置默认媒体
+  const defaultMediaPath = '/static/ship_chun.mp4';
+  if (!path) return defaultMediaPath;
+  // 本地绝对路径添加file://前缀
+  if (path.includes(':\\') || path.startsWith('/')) {
+    return `file://${path}`;
+  }
+  // 项目内静态资源路径
+  return path;
+};
+
 const playing = () => {
   if (welcomeQueue.value.length <= 0) {
     isPlaying.value = false
@@ -189,12 +217,28 @@ const handleDragEnd = () => {
 }
 
 const handleData = (data:any) => {
-  console.log(data)
+  addQueue({id:data.username,type:data.guard_level})
 }
+const listenLocalStorageChange = async () => {
+  const loadConfig = async () => {
+    const savedConfig = await window.electronAPI.getModuleConfig('shipLoad');
+    if (savedConfig) {
+      try {
+        Object.assign(globalConfig, savedConfig.global);
+        Object.assign(media, savedConfig.media);
+      } catch (e) {
+        ElMessage.error('配置解析失败，将使用默认配置！');
+        console.error('配置解析错误：', e);
+      }
+    }
+  };
+  // 页面初始化时加载一次
+  loadConfig();
+};
 
-
-onMounted(()=>{
-  window.electronAPI.onExclusiveChildData(windowKey, handleData)
+ onMounted(()=>{
+  listenLocalStorageChange();
+  removeExclusiveListener = window.electronAPI.onExclusiveChildData(windowKey, handleData)
 })
 
 // 组件卸载清理监听
@@ -203,11 +247,23 @@ onUnmounted(() => {
   document.removeEventListener('mousemove', handleDragging)
   document.removeEventListener('mouseup', handleDragEnd)
   document.removeEventListener('mouseleave', handleDragEnd)
-
+  if (removeExclusiveListener) {
+    removeExclusiveListener()
+  }
 })
 </script>
 
 <style scoped>
+.userInfo{
+  font-size: 2.5rem;
+  font-weight: bolder;
+  color: black;
+}
+.userInfo_list{
+  font-size: 1.5rem;
+  font-weight: bolder;
+  color: black;
+}
 .shipList{
   z-index: 5;
   position: absolute;
@@ -323,6 +379,8 @@ onUnmounted(() => {
   scrollbar-width: thin; /* 细滚动条 */
   scrollbar-color: rgba(77, 255, 64, 0.3) transparent; /* 滑块颜色 + 轨道透明 */
 }
-
+.showBox {
+  background-color: #21e80d;
+}
 
 </style>

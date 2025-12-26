@@ -1,4 +1,9 @@
 import { app, BrowserWindow, ipcMain, session } from 'electron'
+// 关键：禁用窗口跟随系统暗黑主题
+app.commandLine.appendSwitch('force-dark-mode', 'false');
+// 或强制使用浅色模式
+app.commandLine.appendSwitch('disable-dark-mode');
+
 import path from 'path'
 import { fileURLToPath } from 'url'
 // 1. 导入electron-store
@@ -24,6 +29,26 @@ const store = new Store({
         isUserInfo: true,
       },
       exclusiveGift: {} as Record<string, { mediaType: 'gif'|'mp4', mediaPath: string, exclusiveTemplate: string }>
+    },
+    shipLoad:{
+      global: {
+        isMuted: false,
+        windowTitle: '主播的舰长',
+        titleBarOpacity: 1,
+        isUserInfo: true,
+        windowBgColor: 'rgba(0, 0, 0, 1)',
+        userInfoColor: 'rgba(0, 0, 0, 1)'
+      },
+      media: []
+    },
+    specialDanmku:{
+      global: {
+        isMuted: false,
+        isUserInfo: true,
+        windowTitle: '主播的弹幕',
+        titleBarOpacity: 1,
+      },
+      exclusiveDanmku: {} as Record<string, { mediaPath: string, exclusiveTemplate: string }>
     }
   }
 });

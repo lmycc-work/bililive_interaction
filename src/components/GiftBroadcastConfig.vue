@@ -291,6 +291,7 @@
         <el-table-column prop="exclusiveTemplate" label="专属播报模板" align="center">
           <template #default="scope">
             <el-input
+                disabled
                 v-model="scope.row.exclusiveTemplate"
                 size="small"
                 style="width: 280px;"
@@ -426,7 +427,7 @@ const selectExclusiveGiftMedia = () => {
   fileInput.type = 'file';
   fileInput.accept = newExclusiveGiftForm.mediaType === 'gif'
       ? 'image/gif,image/apng,image/webp'
-      : 'video/mp4,video/mov,video/webm';
+      : 'video/mp4,video/quicktime,video/webm';
 
   fileInput.onchange = (e) => {
     const target = e.target as HTMLInputElement;
@@ -490,7 +491,7 @@ const addExclusiveGiftConfig = async () => {
 };
 
 // 删除专属礼物配置
-const deleteExclusiveGiftConfig = (giftName: string) => {
+const deleteExclusiveGiftConfig = async (giftName: string) => {
   ElMessageBox.confirm(
       `确定要删除【${giftName}】的专属配置吗？删除后该礼物将使用全局默认配置`,
       '提示',
@@ -502,6 +503,7 @@ const deleteExclusiveGiftConfig = (giftName: string) => {
   ).then(() => {
     delete exclusiveGiftConfig[giftName];
     ElMessage.success(`【${giftName}】专属配置已删除！`);
+    saveGlobalConfig();
   }).catch(() => {});
 };
 
@@ -607,7 +609,6 @@ onMounted(async () => {
   padding: 20px;
   height: 720px;
   width: 1000px;
-
   margin: 0 auto;
   overflow: scroll;
 }

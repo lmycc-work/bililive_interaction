@@ -34,11 +34,9 @@ export interface TotalConfig {
         broadcast: BroadcastConfig; // 全局播报参数
         window: WindowConfig; // 全局窗口样式
     };
-    giftExclusive: Record<string, GiftExclusiveConfig>; // 礼物专属配置（key：礼物名称）
+    giftExclusive: Record<string, GiftExclusiveConfig>;
 }
 
-// 全局默认配置（用户未配置时使用）
-// 注意：默认媒体路径可填写项目内静态资源路径（如public下的默认gif/mp4）
 export const defaultConfig: TotalConfig = {
     global: {
         media: {
