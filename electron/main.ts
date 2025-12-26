@@ -16,19 +16,21 @@ const store = new Store({
       global: {
         mediaType: 'gif',
         mediaPath: '',
-        volume: 1,
-        rate: 1,
-        pitch: 1,
+        audioPath: '',
+        audioVolume: 1,
         delay: 1500,
-        defaultTemplate: '感谢{{uname}}赠送了{{num}}个{{gift_name}}',
+        mediaWidth:60,
+        mediaHeight:60,
+        isBuffed:false,
+        isUserInfo:true,
+        isKeepFit:false,
+        isLoop:true,
         windowTitle: '主播的感谢',
         titleBarOpacity: 1,
         windowBgColor: 'rgba(0, 0, 0, 1)',
-        userInfoColor: 'rgba(255, 255, 255, 1)',
-        isBuffed: false,
-        isUserInfo: true,
+        userInfoColor: 'rgba(0, 0, 0, 1)'
       },
-      exclusiveGift: {} as Record<string, { mediaType: 'gif'|'mp4', mediaPath: string, exclusiveTemplate: string }>
+      exclusiveGift: {} as Record<string, { mediaType: 'gif'|'mp4', mediaPath: string, audioPath: string }>
     },
     shipLoad:{
       global: {
@@ -40,6 +42,14 @@ const store = new Store({
         userInfoColor: 'rgba(0, 0, 0, 1)'
       },
       media: []
+    },
+    giftStatistics:{
+      global:{
+        windowTitle:'主播的礼物',
+        titleBarOpacity: 1,
+        numColor: 'rgba(0, 0, 0, 1)',
+
+      }
     },
     specialDanmku:{
       global: {
@@ -97,8 +107,8 @@ const dragState = new Map<string, {
 // 创建主窗口
 function createMainWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 900,
+    width: 1300,
+    height: 1000,
     frame: true,
     autoHideMenuBar: true,
     transparent: true,

@@ -1,8 +1,6 @@
 <template>
   <div class="config-page-container">
-    <!-- 配置页面标题 -->
     <div class="page-title">礼物播报配置中心</div>
-
     <!-- 核心表单：全局默认配置 -->
     <el-card shadow="hover" class="config-form-card">
       <el-form
@@ -12,7 +10,6 @@
           ref="globalConfigFormRef"
           class="main-config-form"
       >
-        <!-- 1. 全局默认媒体配置 -->
         <el-divider content-position="left">全局默认媒体配置（未定制礼物将使用此配置）</el-divider>
         <el-form-item label="媒体播放类型" prop="mediaType">
           <el-select v-model="globalConfigForm.mediaType" placeholder="请选择全局默认媒体类型">
@@ -37,6 +34,32 @@
             </template>
           </el-input>
         </el-form-item>
+        <el-form-item  label="音频路径" prop="audioPath">
+          <el-input
+              v-model="globalConfigForm.audioPath"
+              readonly
+          >
+            <template #append>
+              <el-button
+                  type="primary"
+                  icon="Upload"
+                  @click="selectGlobalAudio"
+              >
+                选择音频(MP3)
+              </el-button>
+            </template>
+          </el-input>
+        </el-form-item>
+        <el-form-item label="音频音量" prop="audioVolume">
+          <el-slider
+              v-model="globalConfigForm.audioVolume"
+              :min="0"
+              :max="1"
+              :step="0.1"
+              show-input
+              show-input-controls
+          />
+        </el-form-item>
         <el-form-item label="媒体预览">
           <div class="media-preview-box">
             <el-alert
@@ -53,6 +76,12 @@
                   style="width: 200px; height: 200px;"
                   preview-src-list="[getMediaUrl(globalConfigForm.mediaPath)]"
               />
+              <audio
+                  v-if="globalConfigForm.audioPath"
+                  :src="getMediaUrl(globalConfigForm.audioPath)"
+                  controls
+                  style="margin-top: 10px; width: 200px;"
+              />
             </template>
             <template v-else>
               <video
@@ -64,39 +93,7 @@
           </div>
         </el-form-item>
 
-        <!-- 2. 全局默认播报配置 -->
-        <el-divider content-position="left">全局默认播报配置（未定制礼物将使用此配置）</el-divider>
-        <el-form-item label="音量（0-1）" prop="volume">
-          <el-slider
-              v-model="globalConfigForm.volume"
-              :min="0"
-              :max="1"
-              :step="0.1"
-              show-input
-              show-input-controls
-          />
-        </el-form-item>
-        <el-form-item label="语速（0.1-3）" prop="rate">
-          <el-slider
-              v-model="globalConfigForm.rate"
-              :min="0.1"
-              :max="3"
-              :step="0.1"
-              show-input
-              show-input-controls
-          />
-        </el-form-item>
-        <el-form-item label="音调（0-2）" prop="pitch">
-          <el-slider
-              v-model="globalConfigForm.pitch"
-              :min="0"
-              :max="2"
-              :step="0.1"
-              show-input
-              show-input-controls
-          />
-        </el-form-item>
-        <el-form-item label="动画延时（ms）" prop="delay">
+        <el-form-item label="动画延时" prop="delay">
           <el-slider
               v-model="globalConfigForm.delay"
               :min="500"
@@ -106,25 +103,7 @@
               show-input-controls
           />
         </el-form-item>
-        <el-form-item label="默认播报模板" prop="defaultTemplate">
-          <el-input
-              v-model="globalConfigForm.defaultTemplate"
-              type="textarea"
-              :rows="3"
-              placeholder="支持变量：{{uname}}=送礼人，{{num}}=礼物数量，{{gift_name}}=礼物名称"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button
-              type="success"
-              icon="VolumeUp"
-              @click="previewGlobalBroadcast"
-          >
-            预览全局默认播报效果
-          </el-button>
-        </el-form-item>
 
-        <!-- 3. 全局窗口样式配置 -->
         <el-divider content-position="left">全局窗口样式配置</el-divider>
         <el-form-item label="子页面标题" prop="windowTitle">
           <el-input v-model="globalConfigForm.windowTitle" placeholder="请输入子页面默认标题" />
@@ -135,6 +114,28 @@
               :min="0"
               :max="1"
               :step="0.01"
+              show-input
+              show-input-controls
+              :precision="2"
+          />
+        </el-form-item>
+        <el-form-item label="视频宽度占比" prop="mediaWidth">
+          <el-slider
+              v-model="globalConfigForm.mediaWidth"
+              :min="0"
+              :max="100"
+              :step="1"
+              show-input
+              show-input-controls
+              :precision="2"
+          />
+        </el-form-item>
+        <el-form-item label="视频高度占比" prop="mediaHeight">
+          <el-slider
+              v-model="globalConfigForm.mediaHeight"
+              :min="0"
+              :max="100"
+              :step="1"
               show-input
               show-input-controls
               :precision="2"
@@ -162,6 +163,22 @@
         <el-form-item label-width="150" label="是否展示用户信息" prop="isUserInfo">
           <el-switch
               v-model="globalConfigForm.isUserInfo"
+              size="large"
+              active-text="开启"
+              inactive-text="关闭"
+          />
+        </el-form-item>
+        <el-form-item label-width="150"  label="视频是否维持宽高比">
+          <el-switch
+              v-model="globalConfigForm.isKeepFit"
+              size="large"
+              active-text="开启"
+              inactive-text="关闭"
+          />
+        </el-form-item>
+        <el-form-item label-width="150"  label="视频是否开启循环">
+          <el-switch
+              v-model="globalConfigForm.isLoop"
               size="large"
               active-text="开启"
               inactive-text="关闭"
@@ -202,7 +219,7 @@
     <el-card shadow="hover" class="gift-exclusive-card" style="margin-top: 20px;">
       <div class="card-title">礼物专属配置（仅添加需要定制的礼物，其余自动使用全局默认）</div>
 
-      <!-- 新增专属礼物配置表单 -->
+      <!-- 新增专属礼物配置表单（简化音频逻辑） -->
       <el-form
           :model="newExclusiveGiftForm"
           label-width="80px"
@@ -236,12 +253,16 @@
             选择专属媒体
           </el-button>
         </el-form-item>
-        <el-form-item  label="播报模板">
-          <el-input
-              v-model="newExclusiveGiftForm.exclusiveTemplate"
-              placeholder="支持{{uname}}{{num}}{{gift_name}}"
-              style="width: 300px;"
-          />
+        <!-- 简化：仅音频路径选择，无启用开关 -->
+        <el-form-item label="专属音频">
+          <el-button
+              type="primary"
+              icon="Upload"
+              @click="selectExclusiveGiftAudio"
+              style="width: 120px;"
+          >
+            选择音频(MP3)
+          </el-button>
         </el-form-item>
         <el-form-item>
           <el-button
@@ -254,7 +275,7 @@
         </el-form-item>
       </el-form>
 
-      <!-- 专属礼物配置表格 -->
+      <!-- 专属礼物配置表格（简化音频列） -->
       <el-table
           :data="exclusiveGiftList"
           border
@@ -288,14 +309,23 @@
             </el-input>
           </template>
         </el-table-column>
-        <el-table-column prop="exclusiveTemplate" label="专属播报模板" align="center">
+        <el-table-column prop="audioPath" label="专属音频路径" align="center">
           <template #default="scope">
             <el-input
-                disabled
-                v-model="scope.row.exclusiveTemplate"
+                v-model="scope.row.audioPath"
+                readonly
                 size="small"
                 style="width: 280px;"
-            />
+                placeholder="无"
+            >
+              <template #append>
+                <el-button
+                    type="text"
+                    icon="Refresh"
+                    @click="reselectExclusiveGiftAudio(scope.row)"
+                />
+              </template>
+            </el-input>
           </template>
         </el-table-column>
         <el-table-column label="操作" align="center" width="100">
@@ -318,7 +348,7 @@
       />
 
       <el-alert
-          title="说明：1. 仅保存本地媒体文件路径，删除文件将自动回退到全局默认媒体；2. 礼物名称需与实际接收的礼物名称完全一致，否则无法匹配"
+          title="说明：1. 仅保存本地媒体文件路径，删除文件将自动回退到全局默认媒体；2. 礼物名称需与实际接收的礼物名称完全一致，否则无法匹配；"
           type="warning"
           :closable="false"
           size="small"
@@ -335,29 +365,45 @@ import { ElMessage, ElMessageBox, FormInstance } from "element-plus";
 // 全局配置表单Ref
 const globalConfigFormRef = ref<FormInstance>();
 
-// 全局默认配置（兜底配置，未定制礼物自动使用）
+// 全局默认配置（移除useIndependentAudio，仅保留audioPath/audioVolume）
 const globalConfigForm = reactive({
   mediaType: 'gif' as 'gif' | 'mp4',
-  mediaPath: '', // 全局自定义媒体路径，为空则使用项目内置/default-gift.gif
-  volume: 1,
-  rate: 1,
-  pitch: 1,
+  mediaPath: '',
+  audioPath: '',
+  audioVolume: 1,
   delay: 1500,
+  mediaWidth:60,
+  mediaHeight:60,
   isBuffed:false,
   isUserInfo:true,
-  defaultTemplate: '感谢{{uname}}赠送了{{num}}个{{gift_name}}，谢谢支持！', // 全局默认播报模板
+  isLoop:true,
+  isKeepFit:false,
   windowTitle: '主播的感谢',
   titleBarOpacity: 1,
   windowBgColor: 'rgba(0, 0, 0, 1)',
   userInfoColor: 'rgba(0, 0, 0, 1)'
 });
+const newExclusiveGiftForm = reactive({
+  giftName: '',
+  mediaType: 'gif' as 'gif' | 'mp4',
+  mediaPath: '',
+  audioPath: ''
+});
 
-// 全局表单校验规则
+// 全局表单校验规则（简化音频校验）
 const globalFormRules = reactive({
   mediaType: [{ required: true, message: '请选择全局默认媒体类型', trigger: 'change' }],
-  volume: [{ required: true, message: '请设置全局默认音量', trigger: 'change' }],
-  rate: [{ required: true, message: '请设置全局默认语速', trigger: 'change' }],
-  pitch: [{ required: true, message: '请设置全局默认音调', trigger: 'change' }],
+  mediaPath: [{ required: false, message: '请选择全局默认媒体', trigger: 'change' }],
+  audioPath: [{ required: false, message: '请选择全局音频文件', trigger: 'change' }],
+  audioVolume: [{
+    required: true,
+    message: '请设置音频音量',
+    trigger: 'change',
+    validator: (rule: any, value: number) => {
+      // 有音频路径时校验音量范围，无则跳过
+      return !globalConfigForm.audioPath || (value >= 0 && value <= 1);
+    }
+  }],
   delay: [{ required: true, message: '请设置全局默认动画延时', trigger: 'change' }],
   defaultTemplate: [{ required: true, message: '请输入全局默认播报模板', trigger: 'blur' }],
   windowTitle: [{ required: true, message: '请输入子页面标题', trigger: 'blur' }],
@@ -365,45 +411,38 @@ const globalFormRules = reactive({
   windowBgColor: [{ required: true, message: '请选择子页面背景色', trigger: 'change' }]
 });
 
-// 新增专属礼物配置表单
-const newExclusiveGiftForm = reactive({
-  giftName: '', // 如：小花花
-  mediaType: 'gif' as 'gif' | 'mp4',
-  mediaPath: '', // 专属媒体路径
-  exclusiveTemplate: '' // 专属播报模板
-});
 
-// 礼物专属配置（仅存储需要定制的礼物，初始为空）
+
+// 礼物专属配置（移除useIndependentAudio）
 const exclusiveGiftConfig = reactive<Record<string, {
   mediaType: 'gif' | 'mp4',
   mediaPath: string,
+  audioPath: string, // 音频路径（空则不播放）
   exclusiveTemplate: string
 }>>({});
 
-// 格式化专属礼物配置为表格数据
+// 格式化专属礼物配置为表格数据（移除useIndependentAudio）
 const exclusiveGiftList = computed(() => {
   return Object.entries(exclusiveGiftConfig).map(([giftName, config]) => ({
     giftName,
     mediaType: config.mediaType,
     mediaPath: config.mediaPath,
+    audioPath: config.audioPath,
     exclusiveTemplate: config.exclusiveTemplate
   }));
 });
 
-// 媒体路径格式化（区分本地路径和项目内置路径）
+// 媒体路径格式化
 const getMediaUrl = (path: string) => {
-  // 项目内置默认媒体
-  const defaultMediaPath = '/default-gift.gif';
+  const defaultMediaPath = '/static/ship_chun.mp4';
   if (!path) return defaultMediaPath;
-  // 本地绝对路径添加file://前缀
   if (path.includes(':\\') || path.startsWith('/')) {
     return `file://${path}`;
   }
-  // 项目内静态资源路径
   return path;
 };
 
-// 选择全局默认媒体
+// 选择全局视觉媒体（原有）
 const selectGlobalMedia = () => {
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
@@ -417,17 +456,31 @@ const selectGlobalMedia = () => {
       globalConfigForm.mediaPath = target.files[0].path;
     }
   };
-
   fileInput.click();
 };
 
-// 选择专属礼物媒体
+// 选择全局音频文件（原有）
+const selectGlobalAudio = () => {
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'audio/mp3';
+
+  fileInput.onchange = (e) => {
+    const target = e.target as HTMLInputElement;
+    if (target.files?.[0]) {
+      globalConfigForm.audioPath = target.files[0].path;
+    }
+  };
+  fileInput.click();
+};
+
+// 选择专属礼物视觉媒体（原有）
 const selectExclusiveGiftMedia = () => {
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
   fileInput.accept = newExclusiveGiftForm.mediaType === 'gif'
       ? 'image/gif,image/apng,image/webp'
-      : 'video/mp4,video/quicktime,video/webm';
+      : 'video/mp4,video/mov,video/webm';
 
   fileInput.onchange = (e) => {
     const target = e.target as HTMLInputElement;
@@ -435,11 +488,27 @@ const selectExclusiveGiftMedia = () => {
       newExclusiveGiftForm.mediaPath = target.files[0].path;
     }
   };
-
   fileInput.click();
 };
 
-// 重新选择专属礼物媒体
+// 选择专属礼物音频文件（原有）
+const selectExclusiveGiftAudio = () => {
+  if (newExclusiveGiftForm.mediaType === 'mp4') return;
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'audio/mp3';
+
+  fileInput.onchange = (e) => {
+    const target = e.target as HTMLInputElement;
+    if (target.files?.[0]) {
+      newExclusiveGiftForm.audioPath = target.files[0].path;
+    }
+  };
+  fileInput.click();
+};
+
+// 重新选择专属礼物视觉媒体（原有）
 const reselectExclusiveGiftMedia = (row: any) => {
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
@@ -453,34 +522,49 @@ const reselectExclusiveGiftMedia = (row: any) => {
       exclusiveGiftConfig[row.giftName].mediaPath = target.files[0].path;
     }
   };
-
   fileInput.click();
 };
 
-// 添加专属礼物配置（仅添加需要定制的礼物）
+// 重新选择专属礼物音频
+const reselectExclusiveGiftAudio = (row: any) => {
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'audio/mp3';
+
+  fileInput.onchange = (e) => {
+    const target = e.target as HTMLInputElement;
+    if (target.files?.[0]) {
+      exclusiveGiftConfig[row.giftName].audioPath = target.files[0].path;
+    }
+  };
+  fileInput.click();
+};
+
+// 添加专属礼物配置（简化音频逻辑）
 const addExclusiveGiftConfig = async () => {
   if (!newExclusiveGiftForm.giftName || !newExclusiveGiftForm.mediaPath) {
     ElMessage.error('请完善礼物名称和专属媒体');
     return;
   }
   try {
-    // 直接生成普通对象（非 reactive 代理），避免响应式包装
     const pureGiftConfig = {
       giftName: newExclusiveGiftForm.giftName.trim(),
       mediaType: newExclusiveGiftForm.mediaType,
       mediaPath: newExclusiveGiftForm.mediaPath,
+      audioPath: newExclusiveGiftForm.audioPath, // 空则不播放
       exclusiveTemplate: newExclusiveGiftForm.exclusiveTemplate
     };
 
     const giftKey = pureGiftConfig.giftName;
-    exclusiveGiftConfig[giftKey] = pureGiftConfig; // 即使存入 reactive，后续保存会用 toRaw 剥离
+    exclusiveGiftConfig[giftKey] = pureGiftConfig;
 
     await saveGlobalConfig();
 
-    // 重置表单（重置为纯数据）
+    // 重置表单
     newExclusiveGiftForm.giftName = '';
     newExclusiveGiftForm.mediaType = 'gif';
     newExclusiveGiftForm.mediaPath = '';
+    newExclusiveGiftForm.audioPath = '';
     newExclusiveGiftForm.exclusiveTemplate = '';
 
     ElMessage.success('专属礼物添加成功');
@@ -490,7 +574,7 @@ const addExclusiveGiftConfig = async () => {
   }
 };
 
-// 删除专属礼物配置
+// 删除专属礼物配置（原有）
 const deleteExclusiveGiftConfig = async (giftName: string) => {
   ElMessageBox.confirm(
       `确定要删除【${giftName}】的专属配置吗？删除后该礼物将使用全局默认配置`,
@@ -500,31 +584,14 @@ const deleteExclusiveGiftConfig = async (giftName: string) => {
         cancelButtonText: '取消',
         type: 'warning'
       }
-  ).then(() => {
+  ).then(async () => {
     delete exclusiveGiftConfig[giftName];
     ElMessage.success(`【${giftName}】专属配置已删除！`);
-    saveGlobalConfig();
+    await saveGlobalConfig();
   }).catch(() => {});
 };
 
-// 预览全局默认播报效果
-const previewGlobalBroadcast = () => {
-  const voiceText = globalConfigForm.defaultTemplate
-      .replace(/{{uname}}/g, '测试用户')
-      .replace(/{{num}}/g, '1')
-      .replace(/{{gift_name}}/g, '测试礼物');
-
-  const utterance = new SpeechSynthesisUtterance(voiceText);
-  utterance.lang = 'zh-CN';
-  utterance.volume = globalConfigForm.volume;
-  utterance.rate = globalConfigForm.rate;
-  utterance.pitch = globalConfigForm.pitch;
-  window.speechSynthesis.speak(utterance);
-
-  ElMessage.success('正在播放全局默认播报效果！');
-};
-
-// 恢复全局默认配置（不影响专属礼物配置）
+// 恢复全局默认配置（简化音频字段重置）
 const resetGlobalConfig = () => {
   ElMessageBox.confirm(
       '确定要恢复全局默认配置吗？当前全局自定义配置将被清空，专属礼物配置不受影响',
@@ -535,14 +602,12 @@ const resetGlobalConfig = () => {
         type: 'error'
       }
   ).then(() => {
-    // 重置全局配置到初始状态
     globalConfigForm.mediaType = 'gif';
     globalConfigForm.mediaPath = '';
-    globalConfigForm.volume = 1;
-    globalConfigForm.rate = 1;
-    globalConfigForm.pitch = 1;
+    globalConfigForm.audioPath = ''; // 重置音频路径
+    globalConfigForm.audioVolume = 1; // 重置音频音量
+    // 原有字段重置
     globalConfigForm.delay = 1500;
-    globalConfigForm.defaultTemplate = '感谢{{uname}}赠送了{{num}}个{{gift_name}}，谢谢支持！';
     globalConfigForm.windowTitle = '主播的感谢';
     globalConfigForm.titleBarOpacity = 1;
     globalConfigForm.isBuffed = false;
@@ -550,27 +615,22 @@ const resetGlobalConfig = () => {
     globalConfigForm.windowBgColor = 'rgba(0, 0, 0, 1)';
     globalConfigForm.userInfoColor = 'rgba(0, 0, 0, 1)';
 
-    // 清空全局表单校验状态
     globalConfigFormRef.value?.clearValidate();
-
     ElMessage.success('全局默认配置已恢复！');
   }).catch(() => {});
 };
 
-// 保存全局配置（同步保存专属礼物配置）
+// 保存全局配置（兼容简化后的音频字段）
 const saveGlobalConfig = () => {
   globalConfigFormRef.value?.validate(async (valid) => {
     if (valid) {
       try {
-        // 步骤1：获取 reactive 原始对象（剥离Vue响应式包装）
         const rawGlobal = toRaw(globalConfigForm);
         const rawExclusive = toRaw(exclusiveGiftConfig);
 
-        // 步骤2：深度转换为纯JSON字符串，再解析为普通对象（彻底过滤所有隐性属性）
         const pureGlobal = JSON.parse(JSON.stringify(rawGlobal));
         const pureExclusive = JSON.parse(JSON.stringify(rawExclusive));
 
-        // 步骤3：组装纯数据配置对象（无任何包装属性）
         const pureTotalConfig = {
           global: pureGlobal,
           exclusiveGift: pureExclusive
@@ -588,7 +648,7 @@ const saveGlobalConfig = () => {
   });
 };
 
-// 页面初始化：加载本地保存的配置
+// 页面初始化加载配置（兼容简化后的音频字段）
 onMounted(async () => {
   const savedConfig = await window.electronAPI.getModuleConfig('giftBroadcast');
   if (savedConfig) {
@@ -607,8 +667,8 @@ onMounted(async () => {
 <style scoped>
 .config-page-container {
   padding: 20px;
-  height: 720px;
-  width: 1000px;
+  height: 820px;
+  width: 1100px;
   margin: 0 auto;
   overflow: scroll;
 }
@@ -622,7 +682,6 @@ onMounted(async () => {
 
 .config-form-card, .gift-exclusive-card {
   //padding: 10px 20px;
-
 }
 
 .card-title {
@@ -642,6 +701,8 @@ onMounted(async () => {
 
 .add-gift-form {
   margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .form-btn-group {

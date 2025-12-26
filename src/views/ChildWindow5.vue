@@ -16,27 +16,43 @@
       </div>
     </div>
     <!-- 礼物展示区域（使用全局配置的背景色） -->
-    <div class="child-window" >
+    <div class="child-window " >
       <Transition name="gift-anime">
         <div v-if="isPlaying" class="animeBox">
           <!-- 根据匹配后的媒体类型展示GIF/视频 -->
           <template v-if="currentMedia.type === 'gif'">
             <img
-                style="height: 60vh; width: 60vw; object-fit: contain;"
+                ref="mediaElementRef"
+                style="height: 90vh; width: 90vw; object-fit: cover;"
                 :src="getMediaUrl(currentMedia.path)"
                 alt="礼物媒体"
+                @load="onMediaLoad"
             />
           </template>
           <template v-else>
             <video
-                style="height: 60vh; width: 60vw; object-fit: contain;"
+                ref="mediaElementRef"
+                style="height: 90vh; width: 90vw; object-fit: cover;"
                 autoplay
-                loop
+                :loop="globalConfig.isLoop"
                 :src="getMediaUrl(currentMedia.path)"
                 alt="礼物视频"
+                @loadedmetadata="onMediaLoad"
+                @ended="onMediaEnded"
             >
             </video>
           </template>
+          <!-- 音频播放（独立音频） -->
+          <audio
+              ref="audioElementRef"
+              v-if="currentAudio.path"
+              :src="getMediaUrl(currentAudio.path)"
+              :volume="currentAudio.volume"
+              autoplay
+              :loop="false"
+              @loadedmetadata="onAudioLoad"
+              @ended="onAudioEnded"
+          />
           <!-- 送礼人信息 -->
           <span v-if="globalConfig.isUserInfo" class="unserinfo" :style="{color:globalConfig.userInfoColor}">
             <img
@@ -52,110 +68,113 @@
   </div>
 </template>
 
-
 <script setup lang="ts">
-import {onMounted, onUnmounted, reactive, ref} from "vue";
-import {ElMessage} from "element-plus";
+import { onMounted, onUnmounted, reactive, ref, nextTick  } from "vue";
+import { ElMessage } from "element-plus";
 
 const windowKey = 'window5'
 
-// 1. 定义配置类型（与主配置页面保持一致）
+// 1. 扩展配置类型（新增音频相关字段）
 interface GlobalConfig {
   mediaType: 'gif' | 'mp4';
   mediaPath: string;
-  volume: number;
-  rate: number;
-  pitch: number;
+  audioPath: string; // 新增：全局音频路径
+  audioVolume: number; // 新增：全局音频音量
   delay: number;
-  defaultTemplate: string;
   windowTitle: string;
   titleBarOpacity: number;
   windowBgColor: string;
-  isBuffed:boolean;
-  isUserInfo:boolean;
-  userInfoColor:string;
+  isBuffed: boolean;
+  isUserInfo: boolean;
+  userInfoColor: string;
+  mediaWidth: number;
+  mediaHeight: number;
+  isLoop: boolean;
+  isKeepFit: boolean;
 }
 
 interface ExclusiveGiftConfig {
   mediaType: 'gif' | 'mp4';
   mediaPath: string;
-  exclusiveTemplate: string;
+  audioPath: string; // 新增：专属音频路径
 }
 
-// 2. 初始化全局配置（默认兜底值，与主页面一致）
+// 2. 初始化全局配置（新增音频字段）
 const globalConfig = reactive<GlobalConfig>({
   mediaType: 'gif',
   mediaPath: '',
-  volume: 1,
-  rate: 1,
-  pitch: 1,
+  audioPath: '',
+  audioVolume: 1,
   delay: 1500,
-  defaultTemplate: '感谢{{uname}}赠送了{{num}}个{{gift_name}}，谢谢支持！',
-  windowTitle: '主播的感谢',
-  titleBarOpacity: 0,
-  windowBgColor: 'rgba(0, 0, 0, 1)',
-  userInfoColor: 'rgba(255, 255, 255, 1)',
+  mediaWidth:60,
+  mediaHeight:60,
   isBuffed:false,
   isUserInfo:true,
+  isKeepFit:false,
+  isLoop:true,
+  windowTitle: '主播的感谢',
+  titleBarOpacity: 1,
+  windowBgColor: 'rgba(0, 0, 0, 1)',
+  userInfoColor: 'rgba(0, 0, 0, 1)'
 });
-// 3. 初始化专属礼物配置（仅存储定制礼物）
+
 const exclusiveGiftConfig = reactive<Record<string, ExclusiveGiftConfig>>({});
 
-// 4. 当前匹配到的媒体配置（用于模板渲染）
+// 4. 当前匹配到的媒体/音频配置
 const currentMedia = reactive({
   type: 'gif' as 'gif' | 'mp4',
-  path: ''
+  path: '',
+  duration: 0 // 媒体时长（秒）
+});
+const currentAudio = reactive({
+  path: '',
+  volume: 1,
+  duration: 0 // 音频时长（秒）
 });
 
-// 5. 媒体路径格式化（区分本地路径和项目内置路径）
+// 5. 媒体/音频元素引用（用于获取时长、控制播放）
+const mediaElementRef = ref<HTMLImageElement | HTMLVideoElement | null>(null);
+const audioElementRef = ref<HTMLAudioElement | null>(null);
+
+// 6. 播放状态管理
+const isPlaying = ref(false);
+const mediaEnded = ref(false); // 媒体是否播放结束
+const audioEnded = ref(false); // 音频是否播放结束
+const playTimer = ref<NodeJS.Timeout | null>(null); // 播放时长定时器
+const isProcessingQueue = ref(false); // 新增：防止队列并发处理
+
+// 7. 媒体路径格式化
 const getMediaUrl = (path: string) => {
-  // 项目内置默认媒体
-  const defaultMediaPath = '/default-gift.gif';
+  const defaultMediaPath = '/static/ship_chun.mp4';
   if (!path) return defaultMediaPath;
-  // 本地绝对路径添加file://前缀
   if (path.includes(':\\') || path.startsWith('/')) {
     return `file://${path}`;
   }
-  // 项目内静态资源路径
   return path;
 };
 
-// 6. 模板替换工具函数
-const renderTemplate = (template: string, data: { uname: string; num: number; gift_name: string }) => {
-  return template
-      .replace(/{{uname}}/g, data.uname)
-      .replace(/{{num}}/g, data.num.toString())
-      .replace(/{{gift_name}}/g, data.gift_name);
-};
-let isShowBox = ref(false)
-let isDragging = ref(false) // 是否正在拖动
+// 8. 礼物队列相关
+let isShowBox = ref(false);
+let isDragging = ref(false);
 let giftImg = ref('');
-let user_name = ref('')
-let avatar_img = ref('')
-// 1. 初始化语音合成实例（全局唯一）
-const speechInstance = window.speechSynthesis
-// 预加载语音合成器（避免首次播报延迟）
-speechInstance.onvoiceschanged = () => {
-  console.log('语音合成器已加载，支持的语音列表：', speechInstance.getVoices().map(v => v.name))
-}
+let user_name = ref('');
+let avatar_img = ref('');
 
-let removeExclusiveListener: void | (() => void) | null = null;
-const isPlaying = ref(false)
 interface GiftItem {
-  uname: string; // 用户名
-  num: number; // 礼物数量
-  gift_name: string; // 礼物名称
-  gift_img: string; // 礼物图片地址
-  avatar: string; // 用户头像地址
-  gift_num?: string; // 可选属性：礼物数量字符串（按需保留）
-  createTime: number; // 新增：礼物加入队列的时间戳（毫秒）
+  uname: string;
+  num: number;
+  gift_name: string;
+  gift_img: string;
+  avatar: string;
+  gift_num?: string;
+  createTime: number;
 }
-const giftQueue = ref<GiftItem[]>([])
+const giftQueue = ref<GiftItem[]>([]);
 
-
+// 9. 推入礼物队列（移除语音相关）
 const pushQueue = (gift: any) => {
-  // 去重：1秒内同一用户的同一礼物不重复加入队列
-  if(globalConfig.isBuffed){
+  // 去重逻辑保留
+  if (globalConfig.isBuffed) {
     const isDuplicate = giftQueue.value.some(item =>
         item.uname === gift.uname &&
         item.gift_name === gift.gift_name &&
@@ -163,122 +182,210 @@ const pushQueue = (gift: any) => {
     );
     if (isDuplicate) return;
   }
+
   const giftWithTime: GiftItem = {
-    ...gift, // 解构原有礼物属性
-    createTime: Date.now() // 添加当前时间戳
+    ...gift,
+    createTime: Date.now()
   };
 
   giftQueue.value.push(giftWithTime);
-
-  if (isPlaying.value) {
-    return
-  } else {
-    playGiftVoice()
+  // 只有当未处理队列时，才启动播放
+  if (!isPlaying.value && !isProcessingQueue.value) {
+    playGiftMedia();
   }
-}
-
-
-// 2. 封装语音播报函数
-const playGiftVoice = () => {
+};
+let index = 0
+const playGiftMedia = async () => {
+  // 标记为正在处理队列
+  isProcessingQueue.value = true;
+  index++;
   if (giftQueue.value.length === 0) {
-    isPlaying.value = false
-    return
+    isPlaying.value = false;
+    mediaEnded.value = false;
+    audioEnded.value = false;
+    isProcessingQueue.value = false;
+    return;
   }
-  // 标记为正在播报
-  isPlaying.value = true
-  // 取出队列第一个礼物
-  const currentGift = giftQueue.value.shift()!
 
-  // 匹配当前礼物的配置
+  // 第一步：强制重置所有播放资源（关键！）
+  resetAllMediaAndAudio();
+
+  // 第二步：重置状态
+  isPlaying.value = true;
+  mediaEnded.value = false;
+  audioEnded.value = false;
+  currentMedia.duration = 0;
+  currentAudio.duration = 0;
+  if (playTimer.value) {
+    clearTimeout(playTimer.value);
+    playTimer.value = null;
+  }
+
+  // 第三步：取出当前礼物
+  const currentGift = giftQueue.value.shift()!;
   const giftExclusive = exclusiveGiftConfig[currentGift.gift_name];
   const isHasExclusive = !!giftExclusive;
-
-  // 赋值当前媒体配置（专属 → 全局）
-  // 赋值当前媒体配置（专属媒体优先 → 专属无媒体则用全局默认）
+  console.log(index+"->"+currentGift.gift_name+ new Date())
+  // 第四步：赋值配置
   if (isHasExclusive) {
-    // 判断专属配置是否有有效媒体路径（非空/非空白字符串）
     const hasExclusiveMedia = giftExclusive.mediaPath && giftExclusive.mediaPath.trim() !== '';
     currentMedia.type = hasExclusiveMedia ? giftExclusive.mediaType : globalConfig.mediaType;
     currentMedia.path = hasExclusiveMedia ? giftExclusive.mediaPath : globalConfig.mediaPath;
+    currentAudio.path = giftExclusive.audioPath;
   } else {
-    // 无专属配置，直接使用全局默认媒体
     currentMedia.type = globalConfig.mediaType;
     currentMedia.path = globalConfig.mediaPath;
+    currentAudio.path = globalConfig.audioPath;
+  }
+  currentAudio.volume = globalConfig.audioVolume;
+
+  // 赋值用户信息
+  user_name.value = currentGift.uname;
+  avatar_img.value = currentGift.avatar;
+  giftImg.value = currentGift.gift_img;
+
+  // 第五步：等待DOM更新后，重新加载媒体/音频（关键！）
+  await nextTick();
+  reloadMediaAndAudio();
+};
+
+const resetAllMediaAndAudio = () => {
+  // 重置媒体元素
+  if (mediaElementRef.value) {
+    if (currentMedia.type === 'mp4') {
+      const video = mediaElementRef.value as HTMLVideoElement;
+      video.pause(); // 暂停
+      video.currentTime = 0; // 重置播放位置
+      video.src = ''; // 清空src
+    } else {
+      const img = mediaElementRef.value as HTMLImageElement;
+      img.src = ''; // 清空src
+    }
+    mediaElementRef.value = null; // 清空引用
   }
 
-  giftImg.value = currentGift.gift_img
-  user_name.value = currentGift.uname
-  avatar_img.value = currentGift.avatar
+  // 重置音频元素
+  if (audioElementRef.value) {
+    const audio = audioElementRef.value;
+    audio.pause(); // 暂停
+    audio.currentTime = 0; // 重置播放位置
+    audio.src = ''; // 清空src
+    audioElementRef.value = null; // 清空引用
+  }
 
-  // 获取播报模板（专属 → 全局默认）
-  const targetTemplate = isHasExclusive
-      ? giftExclusive.exclusiveTemplate
-      : globalConfig.defaultTemplate;
-  const voiceText = renderTemplate(targetTemplate, {
-    uname: currentGift.uname,
-    num: currentGift.num,
-    gift_name: currentGift.gift_name
-  });
+  // 重置状态
+  mediaEnded.value = false;
+  audioEnded.value = false;
+};
 
-  // 创建语音实例
-  const utterance = new SpeechSynthesisUtterance(voiceText)
-
-  // 自定义配置
-  utterance.lang = 'zh-CN' // 语言（中文）
-  utterance.volume = globalConfig.volume;//音量
-  utterance.rate = globalConfig.rate;//语速
-  utterance.pitch = globalConfig.pitch;//语调
-
-  // 可选：指定语音（比如选择女性语音）
-  const voices = speechInstance.getVoices()
-  const chineseVoice = voices.find(v => v.lang === 'zh-CN' && v.name.includes('女'))
-  if (chineseVoice) utterance.voice = chineseVoice
-
-  // 播报完成回调
-  utterance.onend = () => {
-    setTimeout(() => {
-      isPlaying.value = false
-      if (giftQueue.value.length > 0) {
-        playGiftVoice()
+const reloadMediaAndAudio = () => {
+  // 加载媒体
+  if (currentMedia.path) {
+    if (currentMedia.type === 'mp4') {
+      const video = mediaElementRef.value as HTMLVideoElement;
+      if (video) {
+        video.src = getMediaUrl(currentMedia.path);
+        video.load(); // 强制重新加载
+        video.play().catch(err => console.error('视频播放失败：', err));
       }
-    }, 1000)
-    console.log('礼物播报完成：', globalConfig.delay)
-  }
-  // 播报错误回调
-  utterance.onerror = (err) => {
-    setTimeout(() => {
-      if (giftQueue.value.length > 0) {
-        playGiftVoice()
+    } else {
+      const img = mediaElementRef.value as HTMLImageElement;
+      if (img) {
+        img.src = getMediaUrl(currentMedia.path); // GIF重新加载
       }
-    }, 500)
-    console.error('语音播报失败：', err)
+    }
   }
 
-  // 开始播报
-  try {
-    speechInstance.speak(utterance)
-  } catch (e) {
-    console.error('播报执行失败：', e)
-    isPlaying.value = false
-  }
-}
-
-// 初始化语音合成器
-const initSpeechSynthesis = () => {
-  if (speechInstance.getVoices().length === 0) {
-    speechInstance.onvoiceschanged = () => {
-      console.log('语音合成器已加载');
-    };
-    setTimeout(() => {
-      const emptyEvent = new Event('voiceschanged');
-      speechInstance.onvoiceschanged?.call(speechInstance, emptyEvent);
-    }, 500);
+  // 加载音频
+  if (currentAudio.path) {
+    const audio = audioElementRef.value as HTMLAudioElement;
+    if (audio) {
+      audio.src = getMediaUrl(currentAudio.path);
+      audio.volume = currentAudio.volume;
+      audio.load(); // 强制重新加载
+      audio.play().catch(err => console.error('音频播放失败：', err));
+    }
   }
 };
 
-// 8. 监听localStorage变化，同步配置（主页面修改配置后实时更新）
+const onMediaLoad = () => {
+  console.log('视频加载完毕')
+  if (mediaElementRef.value) {
+    if (currentMedia.type === 'mp4') {
+      const video = mediaElementRef.value as HTMLVideoElement;
+      currentMedia.duration = video.duration || 0;
+    } else {
+      currentMedia.duration = globalConfig.delay / 1000;
+    }
+    checkPlayDuration();
+  }
+};
+
+// 13. 音频加载完成（不变）
+const onAudioLoad = () => {
+  console.log('音频加载完毕')
+  if (audioElementRef.value) {
+    currentAudio.duration = audioElementRef.value.duration || 0;
+    checkPlayDuration();
+  }
+};
+
+const checkPlayDuration = () => {
+  if (playTimer.value) {
+    clearTimeout(playTimer.value);
+    playTimer.value = null;
+  }
+
+  const maxDuration = Math.max(currentMedia.duration, currentAudio.duration);
+  if (maxDuration > 0) {
+    playTimer.value = setTimeout(() => {
+      endPlay();
+    }, maxDuration * 1000);
+  } else {
+    playTimer.value = setTimeout(() => {
+      endPlay();
+    }, globalConfig.delay);
+  }
+};
+
+// 15. 媒体结束回调（优化）
+// const onMediaEnded = () => {
+//   mediaEnded.value = true;
+//   // 只有音频也结束/无音频时，才结束播放
+//   if (audioEnded.value || !currentAudio.path) {
+//     endPlay();
+//   }
+// };
+const isEndingPlay = ref(false);
+// 16. 音频结束回调（优化）
+const onAudioEnded = () => {
+  audioEnded.value = true;
+  // 加防护：只有媒体也结束/无媒体时，且未在结束流程中，才调用endPlay
+  if ((mediaEnded.value || !currentMedia.path) && !isEndingPlay.value) {
+    endPlay();
+  }
+};
+
+const endPlay = () => {
+  // 清除定时器
+  if (playTimer.value) {
+    clearTimeout(playTimer.value);
+    console.log('清除定时器')
+    playTimer.value = null;
+  }
+
+  // 延迟1秒后，处理下一个礼物（保留原有延迟）
+  setTimeout(async () => {
+    isPlaying.value = false;
+    // 标记为未处理队列
+    isProcessingQueue.value = false;
+    // 递归处理下一个礼物
+    console.log('继续播放')
+    await playGiftMedia();
+  }, 1000);
+};
+
 const listenLocalStorageChange = async () => {
-  // 初始加载配置
   const loadConfig = async () => {
     const savedConfig = await window.electronAPI.getModuleConfig('giftBroadcast');
     if (savedConfig) {
@@ -293,43 +400,38 @@ const listenLocalStorageChange = async () => {
     }
   };
 
-  // 页面初始化时加载一次
   loadConfig();
 };
 
 const handleDragStart = (e: MouseEvent) => {
-  isDragging.value = true
-  // 发送初始鼠标坐标（屏幕坐标，而非窗口内坐标）
-  window.electronAPI.startDrag(windowKey, e.screenX, e.screenY)
+  isDragging.value = true;
+  window.electronAPI.startDrag(windowKey, e.screenX, e.screenY);
 
-  // 先移除已有监听，再添加
   document.removeEventListener('mousemove', handleDragging);
   document.removeEventListener('mouseup', handleDragEnd);
   document.removeEventListener('mouseleave', handleDragEnd);
-  // 全局监听鼠标移动（拖动中）和松开（结束拖动）
-  document.addEventListener('mousemove', handleDragging)
-  document.addEventListener('mouseup', handleDragEnd)
-  document.addEventListener('mouseleave', handleDragEnd)
+  document.addEventListener('mousemove', handleDragging);
+  document.addEventListener('mouseup', handleDragEnd);
+  document.addEventListener('mouseleave', handleDragEnd);
 
-  e.preventDefault() // 阻止默认行为（比如选中文本）
-}
-// 2. 拖动中（鼠标移动）
+  e.preventDefault();
+};
+
 const handleDragging = (e: MouseEvent) => {
-  if (!isDragging.value) return
-  // 实时发送当前鼠标坐标给主进程
-  window.electronAPI.dragging(windowKey, e.screenX, e.screenY)
-}
-// 3. 结束拖动（鼠标松开/离开）
+  if (isDragging.value) {
+    window.electronAPI.dragging(windowKey, e.screenX, e.screenY);
+  }
+};
+
 const handleDragEnd = () => {
-  if (!isDragging.value) return
-  isDragging.value = false
-  // 通知主进程结束拖动
-  window.electronAPI.stopDrag(windowKey)
-  // 移除全局监听
-  document.removeEventListener('mousemove', handleDragging)
-  document.removeEventListener('mouseup', handleDragEnd)
-  document.removeEventListener('mouseleave', handleDragEnd)
-}
+  if (isDragging.value) {
+    isDragging.value = false;
+    window.electronAPI.stopDrag(windowKey);
+    document.removeEventListener('mousemove', handleDragging);
+    document.removeEventListener('mouseup', handleDragEnd);
+    document.removeEventListener('mouseleave', handleDragEnd);
+  }
+};
 
 const handleData = (data: {
   uname: string;
@@ -338,48 +440,54 @@ const handleData = (data: {
   gift_img: string;
   avatar_url: string;
 }) => {
-  // 构造不含createTime的礼物对象（符合Omit<GiftItem, 'createTime'>类型）
   const giftToPush = {
     uname: data.uname,
     num: data.num,
     gift_name: data.gift_name,
     gift_img: data.gift_img,
     avatar: data.avatar_url,
-    gift_num: String(data.num) // 可选属性按需赋值
+    gift_num: String(data.num)
   };
-  console.log(giftToPush)
   pushQueue(giftToPush);
 };
 
-onMounted(() => {
-  initSpeechSynthesis();
-  listenLocalStorageChange(); // 加载并监听配置
-  removeExclusiveListener = window.electronAPI.onExclusiveChildData(windowKey, handleData)
-  console.log(`${windowKey} 已注册专属消息监听`)
-})
-
-// 组件卸载清理监听
 onUnmounted(() => {
   // 拖动监听清理
-  document.removeEventListener('mousemove', handleDragging)
-  document.removeEventListener('mouseup', handleDragEnd)
-  document.removeEventListener('mouseleave', handleDragEnd)
+  document.removeEventListener('mousemove', handleDragging);
+  document.removeEventListener('mouseup', handleDragEnd);
+  document.removeEventListener('mouseleave', handleDragEnd);
 
-  // 移除专属监听，防止内存泄漏
-  if (removeExclusiveListener) {
-    removeExclusiveListener()
+  // 移除消息监听
+  if (window.electronAPI.onExclusiveChildData && window.electronAPI.removeListener) {
+    window.electronAPI.removeListener(windowKey);
   }
-  // 清理播报资源
-  giftQueue.value = []
-  window.speechSynthesis.cancel()
-  isPlaying.value = false
-  console.log(`${windowKey} 已移除专属消息监听`)
 
-})
+  // 强制重置所有播放资源
+  resetAllMediaAndAudio();
+
+  // 清理队列和定时器
+  giftQueue.value = [];
+  isPlaying.value = false;
+  isProcessingQueue.value = false;
+  mediaEnded.value = false;
+  audioEnded.value = false;
+  if (playTimer.value) clearTimeout(playTimer.value);
+});
+
+onMounted(() => {
+  listenLocalStorageChange(); // 加载配置
+  if (window.electronAPI.onExclusiveChildData) {
+    window.electronAPI.onExclusiveChildData(windowKey, handleData);
+  }
+  console.log(`${windowKey} 已注册专属消息监听`);
+});
 </script>
 
 <style scoped>
-.unserinfo{
+.unserinfo {
+  position: absolute;
+  bottom: 5%;
+  left: 5%;
   text-align: left;
   color: white;
   font-size: 1.5rem;
@@ -409,7 +517,7 @@ onUnmounted(() => {
 .gift-anime-leave-active {
   transition: all 0.3s ease;
 }
-.container{
+.container {
   width: 100vw;
   height: 100vh;
 }
@@ -423,7 +531,6 @@ onUnmounted(() => {
   padding: 0;
   margin: 0;
 }
-
 .drag-area {
   height: 30px;
   line-height: 30px;
@@ -434,15 +541,20 @@ onUnmounted(() => {
   align-items: center;
   user-select: none;
 }
-
 .animeBox {
   display: flex;
   flex-direction: column;
+  position: relative; /* 新增：用于定位用户信息 */
+  width: 100%;
+  height: 100%;
 }
-
 .title {
   font-size: 1.5rem;
   font-weight: bolder;
   text-align: left;
+}
+/* 隐藏音频元素（只播放不显示） */
+audio {
+  display: none;
 }
 </style>
