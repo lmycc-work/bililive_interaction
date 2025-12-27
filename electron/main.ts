@@ -18,6 +18,7 @@ const store = new Store({
         mediaPath: '',
         audioPath: '',
         audioVolume: 1,
+        mediaVolume:1,
         delay: 1500,
         mediaWidth:60,
         mediaHeight:60,
@@ -203,6 +204,7 @@ function createChildWindow(windowKey: string) {
       winY: bounds.y
     })
   })
+
 
   // 2. 监听「拖动中」（核心：计算偏移并移动窗口）
   ipcMain.on('dragging', (_, windowKey: string, currentX: number, currentY: number) => {

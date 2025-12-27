@@ -60,6 +60,16 @@
               show-input-controls
           />
         </el-form-item>
+        <el-form-item label="视频音量" prop="mediaVolume">
+          <el-slider
+              v-model="globalConfigForm.mediaVolume"
+              :min="0"
+              :max="1"
+              :step="0.1"
+              show-input
+              show-input-controls
+          />
+        </el-form-item>
         <el-form-item label="媒体预览">
           <div class="media-preview-box">
             <el-alert
@@ -76,12 +86,7 @@
                   style="width: 200px; height: 200px;"
                   preview-src-list="[getMediaUrl(globalConfigForm.mediaPath)]"
               />
-              <audio
-                  v-if="globalConfigForm.audioPath"
-                  :src="getMediaUrl(globalConfigForm.audioPath)"
-                  controls
-                  style="margin-top: 10px; width: 200px;"
-              />
+
             </template>
             <template v-else>
               <video
@@ -90,6 +95,12 @@
                   style="width: 200px; height: 200px;"
               />
             </template>
+            <audio
+                v-if="globalConfigForm.audioPath"
+                :src="getMediaUrl(globalConfigForm.audioPath)"
+                controls
+                style="margin-top: 10px; width: 200px;"
+            />
           </div>
         </el-form-item>
 
@@ -371,6 +382,7 @@ const globalConfigForm = reactive({
   mediaPath: '',
   audioPath: '',
   audioVolume: 1,
+  mediaVolume: 1,
   delay: 1500,
   mediaWidth:60,
   mediaHeight:60,
@@ -493,7 +505,6 @@ const selectExclusiveGiftMedia = () => {
 
 // 选择专属礼物音频文件（原有）
 const selectExclusiveGiftAudio = () => {
-  if (newExclusiveGiftForm.mediaType === 'mp4') return;
 
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
@@ -558,7 +569,7 @@ const addExclusiveGiftConfig = async () => {
     const giftKey = pureGiftConfig.giftName;
     exclusiveGiftConfig[giftKey] = pureGiftConfig;
 
-    await saveGlobalConfig();
+    // await saveGlobalConfig();
 
     // 重置表单
     newExclusiveGiftForm.giftName = '';
@@ -591,7 +602,7 @@ const deleteExclusiveGiftConfig = async (giftName: string) => {
   }).catch(() => {});
 };
 
-// 恢复全局默认配置（简化音频字段重置）
+
 const resetGlobalConfig = () => {
   ElMessageBox.confirm(
       '确定要恢复全局默认配置吗？当前全局自定义配置将被清空，专属礼物配置不受影响',
@@ -638,6 +649,9 @@ const saveGlobalConfig = () => {
 
         await window.electronAPI.saveModuleConfig('giftBroadcast', pureTotalConfig);
         ElMessage.success('配置保存成功！');
+        window.electronAPI.sendDataToChild('window5', {
+          _type: 'reload-config' // 这是我们约定的指令类型
+        });
       } catch (e) {
         ElMessage.error('配置保存失败！');
         console.error('配置保存错误：', e);

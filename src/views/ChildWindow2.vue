@@ -76,7 +76,11 @@ const giftList = computed(() => {
 });
 
 const handleData = (data:any) =>{
-  console.log(data.uname+" "+data.gift_name)
+  if (data && data._type === 'reload-config') {
+    console.log('收到配置更新指令，正在执行...');
+    listenLocalStorageChange();
+    return;
+  }
   if (giftMap.has(data.gift_name)) {
     const current = giftMap.get(data.gift_name);
     if (!current){return}

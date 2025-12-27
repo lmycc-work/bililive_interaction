@@ -27,6 +27,9 @@ const saveGlobalConfig = () => {
 
         await window.electronAPI.saveModuleConfig('giftStatistics', pureTotalConfig);
         ElMessage.success('配置保存成功！');
+        window.electronAPI.sendDataToChild('window2', {
+          _type: 'reload-config' // 这是我们约定的指令类型
+        });
       } catch (e) {
         ElMessage.error('配置保存失败！');
         console.error('配置保存错误：', e);

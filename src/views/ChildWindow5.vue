@@ -23,7 +23,7 @@
           <template v-if="currentMedia.type === 'gif'">
             <img
                 ref="mediaElementRef"
-                style="height: 90vh; width: 90vw; object-fit: cover;"
+                :style="{height:globalConfig.mediaHeight+'vh',width:globalConfig.mediaWidth+'vw',objectFit:globalConfig.isKeepFit?'contain':'cover'}"
                 :src="getMediaUrl(currentMedia.path)"
                 alt="礼物媒体"
                 @load="onMediaLoad"
@@ -32,13 +32,13 @@
           <template v-else>
             <video
                 ref="mediaElementRef"
-                style="height: 90vh; width: 90vw; object-fit: cover;"
+                :style="{height:globalConfig.mediaHeight+'vh',width:globalConfig.mediaWidth+'vw',objectFit:globalConfig.isKeepFit?'contain':'cover'}"
                 autoplay
                 :loop="globalConfig.isLoop"
                 :src="getMediaUrl(currentMedia.path)"
                 alt="礼物视频"
+                :volume="globalConfig.mediaVolume"
                 @loadedmetadata="onMediaLoad"
-                @ended="onMediaEnded"
             >
             </video>
           </template>
@@ -78,6 +78,7 @@ const windowKey = 'window5'
 interface GlobalConfig {
   mediaType: 'gif' | 'mp4';
   mediaPath: string;
+  mediaVolume: number;
   audioPath: string; // 新增：全局音频路径
   audioVolume: number; // 新增：全局音频音量
   delay: number;
@@ -433,13 +434,14 @@ const handleDragEnd = () => {
   }
 };
 
-const handleData = (data: {
-  uname: string;
-  num: number;
-  gift_name: string;
-  gift_img: string;
-  avatar_url: string;
-}) => {
+const handleData = (data: any) => {
+
+  if (data && data._type === 'reload-config') {
+    console.log('收到配置更新指令，正在执行...');
+    listenLocalStorageChange();
+    return;
+  }
+
   const giftToPush = {
     uname: data.uname,
     num: data.num,
@@ -450,6 +452,8 @@ const handleData = (data: {
   };
   pushQueue(giftToPush);
 };
+
+
 
 onUnmounted(() => {
   // 拖动监听清理
