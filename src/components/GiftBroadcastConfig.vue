@@ -376,7 +376,6 @@ import { ElMessage, ElMessageBox, FormInstance } from "element-plus";
 // 全局配置表单Ref
 const globalConfigFormRef = ref<FormInstance>();
 
-// 全局默认配置（移除useIndependentAudio，仅保留audioPath/audioVolume）
 const globalConfigForm = reactive({
   mediaType: 'gif' as 'gif' | 'mp4',
   mediaPath: '',
@@ -407,15 +406,6 @@ const globalFormRules = reactive({
   mediaType: [{ required: true, message: '请选择全局默认媒体类型', trigger: 'change' }],
   mediaPath: [{ required: false, message: '请选择全局默认媒体', trigger: 'change' }],
   audioPath: [{ required: false, message: '请选择全局音频文件', trigger: 'change' }],
-  audioVolume: [{
-    required: true,
-    message: '请设置音频音量',
-    trigger: 'change',
-    validator: (rule: any, value: number) => {
-      // 有音频路径时校验音量范围，无则跳过
-      return !globalConfigForm.audioPath || (value >= 0 && value <= 1);
-    }
-  }],
   delay: [{ required: true, message: '请设置全局默认动画延时', trigger: 'change' }],
   defaultTemplate: [{ required: true, message: '请输入全局默认播报模板', trigger: 'blur' }],
   windowTitle: [{ required: true, message: '请输入子页面标题', trigger: 'blur' }],
@@ -429,8 +419,7 @@ const globalFormRules = reactive({
 const exclusiveGiftConfig = reactive<Record<string, {
   mediaType: 'gif' | 'mp4',
   mediaPath: string,
-  audioPath: string, // 音频路径（空则不播放）
-  exclusiveTemplate: string
+  audioPath: string,
 }>>({});
 
 // 格式化专属礼物配置为表格数据（移除useIndependentAudio）
@@ -440,7 +429,6 @@ const exclusiveGiftList = computed(() => {
     mediaType: config.mediaType,
     mediaPath: config.mediaPath,
     audioPath: config.audioPath,
-    exclusiveTemplate: config.exclusiveTemplate
   }));
 });
 
@@ -563,7 +551,6 @@ const addExclusiveGiftConfig = async () => {
       mediaType: newExclusiveGiftForm.mediaType,
       mediaPath: newExclusiveGiftForm.mediaPath,
       audioPath: newExclusiveGiftForm.audioPath, // 空则不播放
-      exclusiveTemplate: newExclusiveGiftForm.exclusiveTemplate
     };
 
     const giftKey = pureGiftConfig.giftName;
@@ -576,8 +563,6 @@ const addExclusiveGiftConfig = async () => {
     newExclusiveGiftForm.mediaType = 'gif';
     newExclusiveGiftForm.mediaPath = '';
     newExclusiveGiftForm.audioPath = '';
-    newExclusiveGiftForm.exclusiveTemplate = '';
-
     ElMessage.success('专属礼物添加成功');
   } catch (e) {
     ElMessage.error('添加专属礼物失败');

@@ -169,7 +169,12 @@ const globalConfigForm = reactive({
   userInfoColor: 'rgba(0, 0, 0, 1)'
 });
 const media = reactive<string[]>([]);
-let newShipMedia = ref('')
+let newShipMedia = ref<string>('')
+
+const resetGlobalConfig = () => {
+  console.log("重置")
+}
+
 
 const selectExclusiveShipMedia = () => {
   const fileInput = document.createElement('input');
@@ -177,12 +182,12 @@ const selectExclusiveShipMedia = () => {
   fileInput.accept =  'video/mp4,video/mov,video/webm';
   fileInput.onchange = (e) => {
     const target = e.target as HTMLInputElement;
-    newShipMedia.value = target.files[0].path;
+    newShipMedia.value = target.files?.[0]?.path ?? '';
   };
   fileInput.click();
 };
 
-const deleteExclusiveShipConfig = async (path) =>{
+const deleteExclusiveShipConfig = async (path:string) =>{
   const index = media.findIndex(item => item === path);
   if (index === -1) {
     ElMessage.warning('该媒体路径不存在');
@@ -199,7 +204,7 @@ const addExclusiveShipConfig = async () => {
       ElMessage.error('未选择任何媒体')
       return
     }
-    if (media.includes(newShipMedia)) {
+    if (media.includes(newShipMedia.value)) {
       ElMessage.info('该媒体路径已存在，无需重复添加');
       return;
     }

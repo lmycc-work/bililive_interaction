@@ -48,8 +48,8 @@ const store = new Store({
       global:{
         windowTitle:'主播的礼物',
         titleBarOpacity: 1,
-        numColor: 'rgba(0, 0, 0, 1)',
-
+        windowBgColor: 'rgba(0, 0, 0, 1)',
+        numColor: 'rgba(255, 255, 255, 1)',
       }
     },
     specialDanmku:{
@@ -112,7 +112,7 @@ function createMainWindow() {
     height: 1000,
     frame: true,
     autoHideMenuBar: true,
-    transparent: true,
+    // transparent: true,
     resizable: true,
     icon:path.join(__dirname, '../public/icon.ico'),
     webPreferences: {
@@ -156,6 +156,7 @@ function createChildWindow(windowKey: string) {
     'window3': { width: 600, height: 500, title: '特殊弹幕' },
     'window4': { width: 400, height: 400, title: '礼物抽奖' },
     'window5': { width: 400, height: 400, title: '礼物播报' },
+    'window6': { width: 400, height: 400, title: '弹幕投票' },
     'config':{width: 800,height: 600,title:'配置页面'}
   }[windowKey] || { width: 400, height: 300, title: '默认子窗口' }
 

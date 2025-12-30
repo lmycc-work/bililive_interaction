@@ -106,6 +106,7 @@ const globalConfig = reactive<GlobalConfig>({
   mediaPath: '',
   audioPath: '',
   audioVolume: 1,
+  mediaVolume: 1,
   delay: 1500,
   mediaWidth:60,
   mediaHeight:60,
@@ -453,7 +454,7 @@ const handleData = (data: any) => {
   pushQueue(giftToPush);
 };
 
-
+let removeExclusiveListener: void | (() => void) | null = null;
 
 onUnmounted(() => {
   // 拖动监听清理
@@ -462,8 +463,8 @@ onUnmounted(() => {
   document.removeEventListener('mouseleave', handleDragEnd);
 
   // 移除消息监听
-  if (window.electronAPI.onExclusiveChildData && window.electronAPI.removeListener) {
-    window.electronAPI.removeListener(windowKey);
+  if (removeExclusiveListener) {
+    removeExclusiveListener()
   }
 
   // 强制重置所有播放资源
@@ -480,9 +481,7 @@ onUnmounted(() => {
 
 onMounted(() => {
   listenLocalStorageChange(); // 加载配置
-  if (window.electronAPI.onExclusiveChildData) {
-    window.electronAPI.onExclusiveChildData(windowKey, handleData);
-  }
+  removeExclusiveListener = window.electronAPI.onExclusiveChildData(windowKey, handleData)
   console.log(`${windowKey} 已注册专属消息监听`);
 });
 </script>

@@ -9,7 +9,7 @@
         @mouseup="handleDragEnd"
         @mouseleave="handleDragEnd"
     >
-      <span class="title" :style="{ color: globalConfig.windowBgColor }">猩🐒的舰队
+      <span class="title" :style="{ color: globalConfig.windowBgColor }">{{globalConfig.windowTitle}}
         <span style="cursor:pointer;" @click="isMuted = !isMuted">
           <span v-if="isMuted">🔕</span>
           <span v-else>🎵</span>
@@ -70,6 +70,16 @@ const isPlaying = ref(false)
 const typingId = ref('')
 const typingMsg = ref('')
 let rulieIndex = ref(0)
+
+interface GlobalConfig {
+  isMuted: boolean;
+  windowTitle: string;
+  titleBarOpacity: number;
+  isUserInfo: boolean;
+  windowBgColor: string;
+  userInfoColor: string;
+  delay:number;
+}
 
 let removeExclusiveListener: void | (() => void) | null = null;
 const globalConfig = reactive<GlobalConfig>({
@@ -309,8 +319,8 @@ onUnmounted(() => {
 }
 
 .child-window {
-  width: 80vw;
-  height: 80vh;
+  width: 100vw;
+  height: 100vh;
   box-sizing: border-box;
   background: transparent;
   border-radius: 8px;

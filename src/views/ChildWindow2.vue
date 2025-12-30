@@ -1,25 +1,30 @@
 <!-- src/views/ChildWindow1.vue -->
 <template>
-  <div class="child-window">
+  <div :class="{'child-window':true,'showBox':isShowBox}">
     <div
         class="drag-area"
+        :style="{opacity: globalConfig.titleBarOpacity}"
         @mousedown="handleDragStart"
         @mouseup="handleDragEnd"
         @mouseleave="handleDragEnd"
     >
-      <span class="title">猩🐒的礼物
+      <span class="title" :style="{ color: globalConfig.windowBgColor }">{{globalConfig.windowTitle}}
         <span style="cursor:pointer;" @click="isMuted = !isMuted">
-          <span v-if="isMuted"><img style="width: 20px;" src="/static/隐藏.png" /></span>
-          <span v-else><img style="width: 20px;" src="/static/显示.png" /></span>
+          <span v-if="isMuted">🔕</span>
+          <span v-else>🎵</span>
+        </span>
+        <span style="cursor:pointer;" @click="isShowBox = !isShowBox">
+          <img style="height: 8%;width: 8%" v-if="isShowBox" src="/static/显示.png" />
+          <img style="height: 8%;width: 8%" v-else src="/static/隐藏.png" />
         </span>
         <span v-if="isMuted" style="cursor:pointer;margin-left: 30px;color: gold" >{{totalCoin/1000}}元</span>
       </span>
     </div>
     <div class="content">
       <div class="gift-item" v-for="(gift,name) in giftList" :key="name">
-        <span style="font-weight: bolder;font-size: 1.5rem">{{gift.name}}</span>
+        <span class="gift-name" :style="{color:globalConfig.numColor}">{{gift.name}}</span>
         <img :src="gift.img" style="height: 20px" :alt="gift.name"/>
-        <span style="line-height: 20px;font-weight: bolder;color: white;font-size: 1.3rem">*{{gift.num}}</span>
+        <span class="gift-num" :style="{color:globalConfig.numColor}">*{{gift.num}}</span>
       </div>
     </div>
   </div>
@@ -28,13 +33,25 @@
 <script setup lang="ts">
 
 import {computed, onMounted, onUnmounted, reactive, ref} from "vue";
+import {ElMessage} from "element-plus";
 const windowKey = 'window2'
 
 let isDragging = ref(false) // 是否正在拖动
 let isMuted = ref(false)
-
+let isShowBox = ref(false)
 let removeExclusiveListener: void | (() => void) | null = null;
-
+interface GlobalConfig {
+  windowTitle:string;
+  titleBarOpacity: number;
+  windowBgColor:string;
+  numColor: string;
+}
+const globalConfig = reactive<GlobalConfig>({
+  windowTitle:'主播的礼物',
+  titleBarOpacity: 1,
+  windowBgColor: 'rgba(0, 0, 0, 1)',
+  numColor: 'rgba(255, 255, 255, 1)',
+});
 // 1. 开始拖动（鼠标按下）
 const handleDragStart = (e: MouseEvent) => {
   isDragging.value = true
@@ -75,6 +92,24 @@ const giftList = computed(() => {
   return Object.fromEntries(giftMap.entries());
 });
 
+const listenLocalStorageChange = async () => {
+  const loadConfig = async () => {
+    const savedConfig = await window.electronAPI.getModuleConfig('giftStatistics');
+    if (savedConfig) {
+      try {
+        Object.assign(globalConfig, savedConfig.global);
+        console.log(globalConfig)
+        ElMessage.success('配置加载成功！');
+      } catch (e) {
+        ElMessage.error('配置解析失败，将使用默认配置！');
+        console.error('配置解析错误：', e);
+      }
+    }
+  };
+
+  loadConfig();
+};
+
 const handleData = (data:any) =>{
   if (data && data._type === 'reload-config') {
     console.log('收到配置更新指令，正在执行...');
@@ -94,7 +129,7 @@ const handleData = (data:any) =>{
 }
 
 onMounted(()=>{
-
+  listenLocalStorageChange();
   removeExclusiveListener = window.electronAPI.onExclusiveChildData(windowKey, handleData)
   console.log(`${windowKey} 已注册专属消息监听`)
 })
@@ -118,9 +153,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.gift-name{
+  font-weight: bolder;
+  font-size: 1.5rem
+}
+.gift-num{
+  line-height: 20px;
+  font-weight: bolder;
+  color: white;
+  font-size: 1.3rem;
+}
 .child-window {
-  width: 80vw;
-  height: 80vh;
+  width: 100vw;
+  height: 100vh;
   box-sizing: border-box;
   background: transparent;
   border-radius: 8px;
@@ -130,6 +175,9 @@ onUnmounted(() => {
   position: relative;
   display: flex;
   flex-direction: column;
+}
+.showBox {
+  background-color: #21e80d;
 }
 .drag-area {
   height: 30px;

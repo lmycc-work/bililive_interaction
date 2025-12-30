@@ -1,6 +1,71 @@
 
 <template>
-<div>礼物统计配置</div>
+  <div class="config-page-container">
+    <!-- 配置页面标题 -->
+    <div class="page-title">上舰播报配置中心</div>
+    <el-card shadow="hover" >
+      <el-form
+          :model="globalConfigForm"
+          label-width="120px"
+          ref="globalConfigFormRef"
+          class="main-config-form"
+      >
+        <el-form-item label="子页面标题" prop="windowTitle">
+          <el-input v-model="globalConfigForm.windowTitle" placeholder="请输入子页面默认标题" />
+        </el-form-item>
+        <el-form-item label="标题栏透明度" prop="titleBarOpacity">
+          <el-slider
+              v-model="globalConfigForm.titleBarOpacity"
+              :min="0"
+              :max="1"
+              :step="0.01"
+              show-input
+              show-input-controls
+              :precision="2"
+          />
+        </el-form-item>
+        <el-form-item label="标题字体颜色" prop="windowBgColor">
+          <el-color-picker
+              v-model="globalConfigForm.windowBgColor"
+              show-alpha
+              format="rgba"
+          />
+          <el-input
+              v-model="globalConfigForm.windowBgColor"
+              style="margin-left: 10px; width: 200px;"
+          />
+        </el-form-item>
+        <el-form-item label="礼物数量颜色" prop="numColor">
+          <el-color-picker
+              v-model="globalConfigForm.numColor"
+              show-alpha
+              format="rgba"
+          />
+          <el-input
+              v-model="globalConfigForm.numColor"
+              style="margin-left: 10px; width: 200px;"
+          />
+        </el-form-item>
+        <el-form-item class="form-btn-group">
+          <el-button
+              type="default"
+              icon="RefreshLeft"
+              @click="resetGlobalConfig"
+          >
+            恢复全局默认配置
+          </el-button>
+          <el-button
+              type="primary"
+              icon="Save"
+              @click="saveGlobalConfig"
+          >
+            保存全局配置
+          </el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+  </div>
+
 </template>
 <script setup lang="ts">
 import {onMounted, reactive, ref, toRaw} from "vue";
@@ -12,7 +77,8 @@ const globalConfigFormRef = ref<FormInstance>();
 const globalConfigForm = reactive({
   windowTitle:'主播的礼物',
   titleBarOpacity: 1,
-  numColor: 'rgba(0, 0, 0, 1)'
+  windowBgColor: 'rgba(0, 0, 0, 1)',
+  numColor: 'rgba(255, 255, 255, 1)'
 });
 
 const saveGlobalConfig = () => {
@@ -53,5 +119,42 @@ onMounted(async () => {
 });
 </script>
 <style scoped>
+.config-page-container {
+  padding: 20px;
+  height: 720px;
+  width: 1000px;
+  margin: 0 auto;
+  overflow: scroll;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 20px;
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #42b983;
+  margin: 10px 0 15px 0;
+}
 
+.main-config-form {
+  margin-top: 15px;
+}
+
+.media-preview-box {
+  margin-top: 10px;
+}
+
+.add-gift-form {
+  margin-bottom: 10px;
+}
+
+.form-btn-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
 </style>
